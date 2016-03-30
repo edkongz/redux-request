@@ -1,0 +1,24 @@
+{
+  "name": "redux-request",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./node_modules/.bin/babel src --out-dir . --watch --presets es2015"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://kongdigital@github.com/kongdigital/redux-request.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kongdigital/redux-request/issues"
+  },
+  "homepage": "https://github.com/kongdigital/redux-request#readme",
+  "devDependencies": {
+    "babel-cli": "^6.6.5",
+    "superagent": "^1.8.3"
+  }
+}
