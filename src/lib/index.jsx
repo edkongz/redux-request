@@ -1,6 +1,6 @@
 "use strict"
 
-import request from "superagent"
+import requests from "superagent"
 
 let configuration = {
   GET: {
@@ -33,22 +33,23 @@ let configuration = {
     return resp
   }
   ,onResponseOk() {
+    console.log("HERE", this)
     console.warn("SUCCESS Ok")
   }
   ,onResponseComplete() {
     console.warn("COMPLETE")
   }
   ,onBadRequest(err) {
-    console.warn("400 Bad Request")
+    console.warn(`${err.status}: ${err.response}`)
   }
   ,onUnauthorized(err) {
-    console.warn("401 Unauthorized")
+    console.warn(`${err.status}: ${err.response}`)
   }
   ,onForbidden(err) {
-    console.warn("403 Forbidden")
+    console.warn(`${err.status}: ${err.response}`)
   }
   ,onServerError(err) {
-    console.warn("500 Server error")
+    console.warn(`${err.status}: ${err.response}`)
   }
   ,onError(err) {
     console.warn(`${err.status}: ${err.response}`)
@@ -68,7 +69,8 @@ let defaults = {
     ,deleting: false
     ,posting: false
     ,status: null
-    ,data: null
+    ,response: null
+    ,error: null
   }
 }
 
@@ -77,12 +79,56 @@ export let resources = {
   ,scanner: { url: "/scanner" }
 }
 
-export const getList = (name, options={}) => dispatch => {
-  const { GET } = configuration
-  const actions = generateActions(name, options)
-  dispatch(actions(GET.INIT))
-  dispatchRequest("GET", name, options, (err, resp) => processRequest(err, resp, options, dispatch, actions))
+/**
+ * GET List
+ * @param name
+ * @param options
+ * @returns {Function}
+ */
+export const getList = function(name, options={}) {
+  const request = getList
+  return function(dispatch) {
+    const { GET } = configuration
+    options = Object.assign(options, { _method: GET, resourceType: configuration.list.name })
+    const actions = generateActions(name, options)
+    dispatch(actions(GET.INIT))
+    dispatchRequest(request, name, options, (err, resp) => processRequest(err, resp, request, options, dispatch, actions))
+  }
 }
+getList.method = "GET"
+getList.onResponseData = configuration.onResponseData
+getList.onResponseOk = configuration.onResponseOk
+getList.onResponseComplete = configuration.onResponseComplete
+getList.onBadRequest = configuration.onBadRequest
+getList.onUnauthorized = configuration.onUnauthorized
+getList.onForbidden = configuration.onForbidden
+getList.onServerError = configuration.onServerError
+
+/**
+ * GET Item
+ * @param name
+ * @param options
+ * @returns {Function}
+ */
+export const get = function(name, options={}) {
+  const request = get
+  return function(dispatch) {
+    const { GET } = configuration
+    options = Object.assign(options, { _method: GET })
+    const actions = generateActions(name, options)
+    dispatch(actions(GET.INIT))
+    dispatchRequest(request, name, options, (err, resp) => processRequest(err, resp, request, options, dispatch, actions))
+  }
+}
+get.method = "GET"
+get.method = "GET"
+get.onResponseData = configuration.onResponseData
+get.onResponseOk = configuration.onResponseOk
+get.onResponseComplete = configuration.onResponseComplete
+get.onBadRequest = configuration.onBadRequest
+get.onUnauthorized = configuration.onUnauthorized
+get.onForbidden = configuration.onForbidden
+get.onServerError = configuration.onServerError
 // export const get = (name, options) => dispatch => {
 //   const actions = generateActions(name, options)
 //
@@ -123,7 +169,7 @@ export const getReducers = () => {
   let reducers = {}
   for (let resource in resources) {
     const actions = generateActions(resource)
-    const {GET, PUT, POST, DEL} = configuration
+    const { GET, PUT, POST, DEL } = configuration
     // Generate LIST reducer
     reducers[resource + configuration.list.name] = (state = defaults.reducer, action) => {
       switch (action.type) {
@@ -131,8 +177,8 @@ export const getReducers = () => {
           return Object.assign({}, state, {fetching: true, status: null})
 
         case actions(GET.OK).type:
-          const {status, body} = action.response
-          return Object.assign({}, state, {fetching: false, data: body, status})
+          const { status, body } = action.response
+          return Object.assign({}, state, {fetching: false, response: body, status})
 
         default:
           return state
@@ -147,7 +193,7 @@ export const getReducers = () => {
 
         case actions(GET.OK).type:
           const {status, body} = action.response
-          return Object.assign({}, state, {fetching: false, data: body, status})
+          return Object.assign({}, state, {fetching: false, response: body, status})
 
         default:
           return state
@@ -160,15 +206,15 @@ export const getReducers = () => {
 export const addResource = (name, url, options) => resources[name] = Object.assign({ url }, options)
 
 const generateActions = (name, options={}) => {
-  let { resourceType=configuration.list.name } = options
+  let { resourceType=configuration.item.name } = options
   let base = name.toUpperCase() + "_" + resourceType.toUpperCase() + "_"
   return (stage, updates={}) => Object.assign({ type: base + stage }, updates)
 }
 
-const dispatchRequest = (method, name, options, response) => {
+const dispatchRequest = (request, name, options, response) => {
   const { headers=defaults.headers, query={}, params={}, payload={}, contentType=options.contentType }=options
 
-  request(method, configuration.baseUrl + resources[name].url)
+  requests(request.method, configuration.baseUrl + resources[name].url)
     .set(headers)
     .query(query)
     .send(payload)
@@ -176,27 +222,28 @@ const dispatchRequest = (method, name, options, response) => {
     .end(response)
 }
 
-const processRequest = (err, resp, options, dispatch, actions) => {
+const processRequest = (err, resp, request, options, dispatch, actions) => {
   const {
-    onResponseData=configuration.onResponseData
-    ,onResponseOk=configuration.onResponseOk
-    ,onResponseComplete=configuration.onResponseComplete
-    ,onServerError=configuration.onServerError
-    ,onBadRequest=configuration.onBadRequest
-    ,onUnauthorized=configuration.onUnauthorized
-    ,onForbidden=configuration.onUnauthorized
+    onResponseData=request.onResponseData
+    ,onResponseOk=request.onResponseOk
+    ,onResponseComplete=request.onResponseComplete
+    ,onServerError=request.onServerError
+    ,onBadRequest=request.onBadRequest
+    ,onUnauthorized=request.onUnauthorized
+    ,onForbidden=request.onUnauthorized
+    ,_method
   } = options
 
   if (err === null) {
     resp = onResponseData(resp)
-    onResponseOk(resp, dispatch, actions(GET.OK))
+    onResponseOk(resp, dispatch, actions(_method.OK))
     return onResponseComplete(resp, dispatch)
   }
 
-  if (err.status >= 500) return onServerError(err, dispatch, actions(GET.ERR).type)
-  if (err.status === 400) return onBadRequest(err, dispatch, actions(GET.ERR).type)
-  if (err.status === 401) return onUnauthorized(err, dispatch, actions(GET.ERR).type)
-  if (err.status === 403) return onForbidden(err, dispatch, actions(GET.ERR).type)
+  if (err.status >= 500) return onServerError(err, dispatch, actions(_method.ERR).type)
+  if (err.status === 400) return onBadRequest(err, dispatch, actions(_method.ERR).type)
+  if (err.status === 401) return onUnauthorized(err, dispatch, actions(_method.ERR).type)
+  if (err.status === 403) return onForbidden(err, dispatch, actions(_method.ERR).type)
   return onError(err)
 }
 
@@ -206,6 +253,7 @@ export default {
   ,configuration
   ,getReducers
   ,getList
+  ,get
 }
 
 // class ReduxRequest {
