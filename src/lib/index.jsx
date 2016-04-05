@@ -39,7 +39,8 @@ let defaults = {
   }
 
   ,methods: {
-    GET: {
+    prefix: ""
+    ,GET: {
       name: "GET"
       ,INIT: "FETCHING"
       ,OK: "FETCH_OK"
@@ -71,7 +72,7 @@ let defaults = {
   }
   ,onResponseOk(resp, dispatch, action) {
     console.warn("SUCCESS Ok")
-    dispatch(R.merge(action, resp))
+    dispatch(R.merge(action, { resp }))
   }
   ,onResponseComplete(resp, dispatch) {
     console.warn("COMPLETE")
@@ -89,9 +90,13 @@ const requestError = (err, dispatch, action) => {
 }
 
 export const resources = new Map()
-export const addResource = (name, url, options) => resources.set(name, R.merge({
-  url: R.compose(R.join("/"), R.prepend(url))
-}, options))
+export const addResource = (name, url, options) => {
+  url = url || (/^\//.test(name) ? name : "/" + name)
+  resources.set(name, R.merge({
+    url: R.compose(R.concat(defaults.baseUrl), R.join("/"), R.prepend(url))
+    ,reducerName: name
+  }, options))
+}
 
 export const removeResource = name => resources.delete(name)
 
@@ -118,6 +123,7 @@ getList.onBadRequest = defaults.onBadRequest
 getList.onUnauthorized = defaults.onUnauthorized
 getList.onForbidden = defaults.onForbidden
 getList.onServerError = defaults.onServerError
+getList.onError = defaults.onError
 
 /**
  * GET Item
@@ -142,6 +148,7 @@ get.onBadRequest = defaults.onBadRequest
 get.onUnauthorized = defaults.onUnauthorized
 get.onForbidden = defaults.onForbidden
 get.onServerError = defaults.onServerError
+get.onError = defaults.onError
 
 /**
  * POST Item
@@ -164,6 +171,7 @@ post.onBadRequest = defaults.onBadRequest
 post.onUnauthorized = defaults.onUnauthorized
 post.onForbidden = defaults.onForbidden
 post.onServerError = defaults.onServerError
+post.onError = defaults.onError
 
 /**
  * PUT Item
@@ -186,6 +194,7 @@ put.onBadRequest = defaults.onBadRequest
 put.onUnauthorized = defaults.onUnauthorized
 put.onForbidden = defaults.onForbidden
 put.onServerError = defaults.onServerError
+put.onError = defaults.onError
 
 /**
  * DELETE Item
@@ -208,18 +217,18 @@ del.onBadRequest = defaults.onBadRequest
 del.onUnauthorized = defaults.onUnauthorized
 del.onForbidden = defaults.onForbidden
 del.onServerError = defaults.onServerError
-
+del.onError = defaults.onError
 
 export const getReducers = () => {
   let reducers = {}
-  for (let resource in resources) {
+  for (let [name, resource] of resources) {
     if(resource.reducer && resource.reducer === false) continue
 
     const { GET, PUT, POST, DEL } = defaults.methods
 
     // Generate LIST reducer
-    const LIST = generateActions(resource, { resourceType: defaults.list.name })
-    reducers[resource + defaults.list.name] = (state = defaults.item.reducer, action) => {
+    const LIST = generateActions(name, { resourceType: defaults.list.name })
+    reducers[resource.reducerName + defaults.list.name] = (state = defaults.item.reducer, action) => {
       const { status } = action
       switch (action.type) {
         case LIST(GET.INIT).type:
@@ -237,8 +246,8 @@ export const getReducers = () => {
     }
 
     // Generate ITEM reducer
-    const ITEM = generateActions(resource, { resourceType: defaults.item.name })
-    reducers[resource + defaults.item.name] = (state = defaults.list.reducer, action) => {
+    const ITEM = generateActions(name, { resourceType: defaults.item.name })
+    reducers[resource.reducerName + defaults.item.name] = (state = defaults.list.reducer, action) => {
       const { status } = action
 
       switch (action.type) {
@@ -246,7 +255,7 @@ export const getReducers = () => {
           return R.merge( state, { fetching: true, status:  null } )
 
         case ITEM(GET.OK).type:
-          return R.merge( state, { fetching: false, resp: action.body, status } )
+          return R.merge( state, { fetching: false, resp: action.resp.body, status } )
 
         case ITEM(GET.ERR).type:
           return R.merge(state, { fetching: false, err: action.err, status} )
@@ -255,7 +264,7 @@ export const getReducers = () => {
           return R.merge( state, { posting: true, status: null } )
 
         case ITEM(POST.OK).type:
-          return R.merge( state, { posting: false, resp: action.body, status } )
+          return R.merge( state, { posting: false, resp: action.resp.body, status } )
 
         case ITEM(POST.ERR).type:
           return R.merge(state, { posting: false, err: action.err, status} )
@@ -264,7 +273,7 @@ export const getReducers = () => {
           return R.merge( state, { updating: true, status: null } )
 
         case ITEM(PUT.OK).type:
-          return R.merge( state, { updating: false, resp: action.body, status } )
+          return R.merge( state, { updating: false, resp: action.resp.body, status } )
 
         case ITEM(PUT.ERR).type:
           return R.merge(state, { updating: false, err: action.err, status} )
@@ -273,7 +282,7 @@ export const getReducers = () => {
           return R.merge( state, { deleting: true, status: null } )
 
         case ITEM(DEL.OK).type:
-          return R.merge( state, { deleting: false, resp: action.body, status } )
+          return R.merge( state, { deleting: false, resp: action.resp.body, status } )
 
         case ITEM(DEL.ERR).type:
           return R.merge(state, { deleting: false, err: action.err, status} )
@@ -286,10 +295,19 @@ export const getReducers = () => {
   return reducers
 }
 
+// Convert to Rambda
 const generateActions = (name, options={}) => {
   let { resourceType=defaults.item.name } = options
-  let action = [name.toUpperCase(), resourceType.toUpperCase()]
-  return (stage, updates={}) => R.merge({ type: R.join("_", [...action, stage]) }, updates)
+
+  const buildAction = R.compose(
+    R.objOf("type"),
+    R.join("_"),
+    R.map(e => e.toUpperCase()),
+    R.concat([name, resourceType])
+  )
+  // let action = [name.toUpperCase(), resourceType.toUpperCase()]
+  // return (stage, updates={}) => R.merge({ type: R.join("_", [...action, stage]) }, updates)
+  return (stage, updates={}) => R.merge(buildAction([stage]), updates)
 }
 
 const dispatchRequest = (request, name, options, dispatch, actions) => {
@@ -302,9 +320,8 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
   }=options
 
   dispatch(actions(method.INIT))
-  // const generateUrl = R.join("/", R.prepend(, ))
 
-  requests(method.name, R.join("/", [resources.get(name.shift()).url, ...name]))
+  requests(method.name, resources.get(name.shift()).url([name]))
     .set(headers)
     .query(query)
     .send(payload)
@@ -319,7 +336,6 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
         ,onUnauthorized=request.onUnauthorized
         ,onForbidden=request.onUnauthorized
       }=options
-
       if (err === null) {
         resp = onResponseData(resp)
         onResponseOk(resp, dispatch, actions(method.OK))
