@@ -97,9 +97,10 @@ export const resources = new Map()
 export const addResource = (name, url, options) => {
   // If no url is supplied assume url is /name
   url = url || (/^\//.test(name) ? name : "/" + name)
+  const baseUrl = /^https?/.test(url) ? "" : defaults.baseUrl
 
   let resource = R.merge({
-    buildUrl: R.compose(R.concat(defaults.baseUrl), R.join("/"), R.prepend(url))
+    buildUrl: R.compose(R.concat(baseUrl), R.join("/"), R.prepend(url))
     ,reducerName: name
     ,url
   }, options)
@@ -116,7 +117,7 @@ export const removeResource = name => resources.delete(name)
  * @returns {Function}
  */
 export const getList = function(name, options={}) {
-  if (typeof(name)==="string") name = [name]
+  name = checkResourceName(name)
 
   return function(dispatch) {
     options = R.merge({ resourceType: defaults.list.name }, options)
@@ -125,14 +126,6 @@ export const getList = function(name, options={}) {
 }
 
 getList.method = defaults.methods.GET
-// getList.onResponseData = defaults.onResponseData
-// getList.onResponseOk = defaults.onResponseOk
-// getList.onResponseComplete = defaults.onResponseComplete
-// getList.onBadRequest = defaults.onBadRequest
-// getList.onUnauthorized = defaults.onUnauthorized
-// getList.onForbidden = defaults.onForbidden
-// getList.onServerError = defaults.onServerError
-// getList.onError = defaults.onError
 
 /**
  * GET Item
@@ -141,20 +134,14 @@ getList.method = defaults.methods.GET
  * @returns {Function}
  */
 export const get = function(name, options={}) {
+  name = checkResourceName(name)
+
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
     return dispatchRequest(get, name, options, dispatch, generateActions(name, options))
   }
 }
 get.method = defaults.methods.GET
-// get.onResponseData = defaults.onResponseData
-// get.onResponseOk = defaults.onResponseOk
-// get.onResponseComplete = defaults.onResponseComplete
-// get.onBadRequest = defaults.onBadRequest
-// get.onUnauthorized = defaults.onUnauthorized
-// get.onForbidden = defaults.onForbidden
-// get.onServerError = defaults.onServerError
-// get.onError = defaults.onError
 
 /**
  * POST Item
@@ -163,20 +150,14 @@ get.method = defaults.methods.GET
  * @returns {Function}
  */
 export const post = function(name, options={}) {
+  name = checkResourceName(name)
+
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
     dispatchRequest(post, name, options, dispatch, generateActions(name, options))
   }
 }
 post.method = defaults.methods.POST
-// post.onResponseData = defaults.onResponseData
-// post.onResponseOk = defaults.onResponseOk
-// post.onResponseComplete = defaults.onResponseComplete
-// post.onBadRequest = defaults.onBadRequest
-// post.onUnauthorized = defaults.onUnauthorized
-// post.onForbidden = defaults.onForbidden
-// post.onServerError = defaults.onServerError
-// post.onError = defaults.onError
 
 /**
  * PUT Item
@@ -185,20 +166,14 @@ post.method = defaults.methods.POST
  * @returns {Function}
  */
 export const put = function(name, options={}) {
+  name = checkResourceName(name)
+
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
     dispatchRequest(put, name, options, dispatch, generateActions(name, options))
   }
 }
 put.method = defaults.methods.PUT
-// put.onResponseData = defaults.onResponseData
-// put.onResponseOk = defaults.onResponseOk
-// put.onResponseComplete = defaults.onResponseComplete
-// put.onBadRequest = defaults.onBadRequest
-// put.onUnauthorized = defaults.onUnauthorized
-// put.onForbidden = defaults.onForbidden
-// put.onServerError = defaults.onServerError
-// put.onError = defaults.onError
 
 /**
  * DELETE Item
@@ -207,23 +182,15 @@ put.method = defaults.methods.PUT
  * @returns {Function}
  */
 export const del = function(name, options={}) {
-  const request = del
+  name = checkResourceName(name)
+
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
     dispatchRequest(request, name, options, dispatch, generateActions(name, options))
   }
 }
 del.method = defaults.methods.DEL
-// del.onResponseData = defaults.onResponseData
-// del.onResponseOk = defaults.onResponseOk
-// del.onResponseComplete = defaults.onResponseComplete
-// del.onBadRequest = defaults.onBadRequest
-// del.onUnauthorized = defaults.onUnauthorized
-// del.onForbidden = defaults.onForbidden
-// del.onServerError = defaults.onServerError
-// del.onError = defaults.onError
 
-// Convert to Rambda
 const generateActions = (name, options={}) => {
   let { resourceType=defaults.item.name } = options
 
@@ -234,6 +201,13 @@ const generateActions = (name, options={}) => {
     R.concat([name, resourceType])
   )
   return (stage, updates={}) => R.merge(buildAction([stage]), updates)
+}
+
+const checkResourceName = name => {
+  if (R.type(name) === "String") name = [name]
+  if (R.type(name) !== "Array") throw new TypeError("Resource name must be either a either string or an array of strings")
+  if (!resources.has(name[0])) throw new ReferenceError(`No resource found named: ${name[0]}`)
+  return R.map(e => e.toString(), name)
 }
 
 const generateEvents = (options, resource, request) => event => {
@@ -251,8 +225,7 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
   }=options
 
   dispatch(actions(method.INIT))
-
-  requests(method.name, resources.get(name.shift()).url([name]))
+  requests(method.name, resources.get(name.shift()).buildUrl([name]))
     .set(headers)
     .query(query)
     .send(payload)
@@ -274,6 +247,10 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
     })
 }
 
+/**
+ * Generates reducers to add to store
+ * @returns {{}}
+ */
 export const getReducers = () => {
   let reducers = {}
   for (let [name, resource] of resources) {
@@ -284,6 +261,12 @@ export const getReducers = () => {
   return reducers
 }
 
+/**
+ * Default list reducer
+ * @param name
+ * @param initState
+ * @returns {function()}
+ */
 const defaultListReducer = (name, initState) => {
   const LIST = generateActions(name, { resourceType: defaults.list.name })
   const { GET } = defaults.methods
@@ -306,6 +289,12 @@ const defaultListReducer = (name, initState) => {
   }
 }
 
+/**
+ * Default item reducer
+ * @param name
+ * @param initState
+ * @returns {function()}
+ */
 const defaultItemReducer = (name, initState) => {
   const ITEM = generateActions(name, { resourceType: defaults.item.name })
   const { GET, PUT, POST, DEL } = defaults.methods
@@ -355,12 +344,36 @@ const defaultItemReducer = (name, initState) => {
   }
 }
 
-
-export default {
-  resources
-  ,addResource
-  ,removeResource
-  ,defaults
-  ,getReducers
-  ,getList
+function API(resource) {
+  if(!resources.has(resource)) throw new ReferenceError(`No resource found named: ${resource}`)
+  return {
+    getList: options => getList(resource, options)
+    ,get: options => get(resource, options)
+    ,post: options => post(resource, options)
+    ,put: options => put(resource, options)
+    ,del: options => del(resource, options)
+  }
 }
+
+export default Object.assign(API, {
+  addResource
+  ,removeResource
+  ,getList
+  ,get
+  ,post
+  ,put
+  ,del
+
+  ,setBaseUrl: url => defaults.baseUrl = url
+  ,setDefaultHeaders: headers => defaults.headers = headers
+  ,addDefaultHeader: header => defaults.headers = Object.assign(defaults.headers, header)
+  ,setDefaultQuery: query => defaults.query = query
+  ,setDefaultPayload: payload => defaults.payload = payload
+  ,setContentType: contentType => defaults.contentType = contentType
+  ,setDefaultListName: name => defaults.list.name = name
+  ,setDefaultListReducer: reducer => defaults.list.reducer = reducer
+  ,setDefaultListState: state => defaults.list.initState = state
+  ,setDefaultItemName: name => defaults.item.name = name
+  ,setDefaultItemReducer: reducer => defaults.item.reducer = reducer
+  ,setDefaultItemState: state => defaults.item.initState = state
+})
