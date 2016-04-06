@@ -14,48 +14,65 @@ api.addResource("users")
 dispatch(api.getList("users"))
 ```
 
-Redux-request is aimed at being highly configurable. Every stage and resource can be fine tuned.
+Redux-request is aimed at being highly configurable at every stage of  the request lifecycle and at every level.
 
-Example
+To set the handler when data is received but *before* the action is dispatched
 
 ```javascript
-// For every request set the default response handler
-api.defaults.onResponseData = (resp) => {
+api.defaults.onData = (resp) => {
   // Do stuff
-  return resp
+  return modified
 }
+```
 
-// For every getList request set the response handler
-api.getList.onReponseData = (resp) => {
-  // Do stuff
-  return resp
+To override and dispatch your own action
+
+```javascript
+api.defaults.onResponse = (resp, action) => {
+  dispatch(customAction())
 }
+```
 
-// For this resource set the response handler
-api.addResource("users", {
-  onResponseData(resp) {
-    // Do stuff
-  	return resp
-  }
-})
+To run something after the response is complete
 
-// For every getList for this resource set the response handler
-api.addResource("user", {
-  getList: {
-  	onResponseData(resp) {
-  	  // Do stuff
-      return resp
-    }
-  }
-})
+```javascript
+api.defaults.onCompolete = (resp) => {
+  // do stuff	
+}
+```
 
-// For this individual request set the response handler
-api.getList("users", {
-  onResponseData(resp) {
-    // Do stuff
-    return resp
-  }
+You can change the global default for each event
+
+```javascript
+api.defaults.onData = (resp) => { // Do Stuff }
+```
+
+You can change the events for each type of request
+
+```javascript
+api.getList.onData = (resp) => { // Do Stuff }
+```
+
+You can change the events for a particular resource
+
+```javascript
+api.addResource("resource", { 
+	getList: { 
+		onData = (resp) => { // Do Stuff }
+	}
 })
 ```
 
- 
+You can change the event for a single request
+
+```javascript
+api.getList("resource", { 
+	onData: resp => "DO stuff"
+})
+```
+
+It can generate all the reducers you need
+```javascript
+api.addResource("users")
+api.getReducers()
+```

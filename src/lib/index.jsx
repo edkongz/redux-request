@@ -5,67 +5,70 @@ import R from "ramda"
 
 let defaults = {
   baseUrl: ""
-  , contentType: "application/json"
-  , query: {}
-  , headers: {}
-  , payload: {}
+  ,contentType: "application/json"
+  ,query: {}
+  ,headers: {}
+  ,payload: {}
 
-  , list: {
+  ,list: {
     name: "List"
-    , reducer: {
+    ,reducer: defaultListReducer
+    ,initState: {
       fetching: false
-      , updating: false
-      , deleting: false
-      , posting: false
-      , status: null
-      , pageNumber: 0
-      , perPage: 100
-      , resp: null
-      , err: null
+      ,updating: false
+      ,deleting: false
+      ,posting: false
+      ,status: null
+      ,pageNumber: 0
+      ,perPage: 100
+      ,resp: null
+      ,err: null
     }
   }
 
-  , item: {
+  ,item: {
     name: "Item"
-    , reducer: {
+    ,reducer: defaultItemReducer
+    ,initState: {
       fetching: false
-      , updating: false
-      , deleting: false
-      , posting: false
-      , status: null
-      , resp: null
-      , err: null
+      ,updating: false
+      ,deleting: false
+      ,posting: false
+      ,status: null
+      ,resp: null
+      ,err: null
     }
   }
 
-  , methods: {
+  ,methods: {
     prefix: ""
-    , GET: {
+    ,GET: {
       name: "GET"
-      , INIT: "FETCHING"
-      , OK: "FETCH_OK"
-      , ERR: "FETCH_ERR"
+      ,INIT: "FETCHING"
+      ,OK: "FETCH_OK"
+      ,ERR: "FETCH_ERR"
     }
-    , POST: {
+    ,POST: {
       name: "POST"
-      , INIT: "POSTING"
-      , OK: "POST_OK"
-      , ERR: "POST_ERR"
+      ,INIT: "POSTING"
+      ,OK: "POST_OK"
+      ,ERR: "POST_ERR"
     }
-    , PUT: {
+    ,PUT: {
       name: "PUT"
-      , INIT: "UPDATING"
-      , OK: "UPDATE_OK"
-      , ERR: "UPDATE_ERR"
+      ,INIT: "UPDATING"
+      ,OK: "UPDATE_OK"
+      ,ERR: "UPDATE_ERR"
     }
-    , DEL: {
+    ,DEL: {
       name: "DELETE"
-      , INIT: "DELETING"
-      , OK: "DELETE_OK"
-      , ERR: "DELETE_ERR"
+      ,INIT: "DELETING"
+      ,OK: "DELETE_OK"
+      ,ERR: "DELETE_ERR"
     }
   }
 }
+
 const events = {
   onData(resp, dispatch) {
     console.warn("SUCCESS DATA")
@@ -100,9 +103,6 @@ export const addResource = (name, url, options) => {
     ,reducerName: name
     ,url
   }, options)
-  resource.events = R.merge({
-
-  }. options.events || {})
 
   resources.set(name, resource)
 }
@@ -115,25 +115,24 @@ export const removeResource = name => resources.delete(name)
  * @param options
  * @returns {Function}
  */
-export const getList = function(name, options={}) {``
-  const request = getList
+export const getList = function(name, options={}) {
   if (typeof(name)==="string") name = [name]
 
   return function(dispatch) {
     options = R.merge({ resourceType: defaults.list.name }, options)
-    dispatchRequest(request, name, options, dispatch, generateActions(name[0], options))
+    dispatchRequest(getList, name, options, dispatch, generateActions(name[0], options))
   }
 }
 
 getList.method = defaults.methods.GET
-getList.onResponseData = defaults.onResponseData
-getList.onResponseOk = defaults.onResponseOk
-getList.onResponseComplete = defaults.onResponseComplete
-getList.onBadRequest = defaults.onBadRequest
-getList.onUnauthorized = defaults.onUnauthorized
-getList.onForbidden = defaults.onForbidden
-getList.onServerError = defaults.onServerError
-getList.onError = defaults.onError
+// getList.onResponseData = defaults.onResponseData
+// getList.onResponseOk = defaults.onResponseOk
+// getList.onResponseComplete = defaults.onResponseComplete
+// getList.onBadRequest = defaults.onBadRequest
+// getList.onUnauthorized = defaults.onUnauthorized
+// getList.onForbidden = defaults.onForbidden
+// getList.onServerError = defaults.onServerError
+// getList.onError = defaults.onError
 
 /**
  * GET Item
@@ -142,23 +141,20 @@ getList.onError = defaults.onError
  * @returns {Function}
  */
 export const get = function(name, options={}) {
-  const request = get
-  if(!Array.isArray(name)) throw new TypeError("name must be an array")
-
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    return dispatchRequest(request, name, options, dispatch, generateActions(name, options))
+    return dispatchRequest(get, name, options, dispatch, generateActions(name, options))
   }
 }
 get.method = defaults.methods.GET
-get.onResponseData = defaults.onResponseData
-get.onResponseOk = defaults.onResponseOk
-get.onResponseComplete = defaults.onResponseComplete
-get.onBadRequest = defaults.onBadRequest
-get.onUnauthorized = defaults.onUnauthorized
-get.onForbidden = defaults.onForbidden
-get.onServerError = defaults.onServerError
-get.onError = defaults.onError
+// get.onResponseData = defaults.onResponseData
+// get.onResponseOk = defaults.onResponseOk
+// get.onResponseComplete = defaults.onResponseComplete
+// get.onBadRequest = defaults.onBadRequest
+// get.onUnauthorized = defaults.onUnauthorized
+// get.onForbidden = defaults.onForbidden
+// get.onServerError = defaults.onServerError
+// get.onError = defaults.onError
 
 /**
  * POST Item
@@ -167,21 +163,20 @@ get.onError = defaults.onError
  * @returns {Function}
  */
 export const post = function(name, options={}) {
-  const request = post
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(request, name, options, dispatch, generateActions(name, options))
+    dispatchRequest(post, name, options, dispatch, generateActions(name, options))
   }
 }
 post.method = defaults.methods.POST
-post.onResponseData = defaults.onResponseData
-post.onResponseOk = defaults.onResponseOk
-post.onResponseComplete = defaults.onResponseComplete
-post.onBadRequest = defaults.onBadRequest
-post.onUnauthorized = defaults.onUnauthorized
-post.onForbidden = defaults.onForbidden
-post.onServerError = defaults.onServerError
-post.onError = defaults.onError
+// post.onResponseData = defaults.onResponseData
+// post.onResponseOk = defaults.onResponseOk
+// post.onResponseComplete = defaults.onResponseComplete
+// post.onBadRequest = defaults.onBadRequest
+// post.onUnauthorized = defaults.onUnauthorized
+// post.onForbidden = defaults.onForbidden
+// post.onServerError = defaults.onServerError
+// post.onError = defaults.onError
 
 /**
  * PUT Item
@@ -190,21 +185,20 @@ post.onError = defaults.onError
  * @returns {Function}
  */
 export const put = function(name, options={}) {
-  const request = put
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(request, name, options, dispatch, generateActions(name, options))
+    dispatchRequest(put, name, options, dispatch, generateActions(name, options))
   }
 }
 put.method = defaults.methods.PUT
-put.onResponseData = defaults.onResponseData
-put.onResponseOk = defaults.onResponseOk
-put.onResponseComplete = defaults.onResponseComplete
-put.onBadRequest = defaults.onBadRequest
-put.onUnauthorized = defaults.onUnauthorized
-put.onForbidden = defaults.onForbidden
-put.onServerError = defaults.onServerError
-put.onError = defaults.onError
+// put.onResponseData = defaults.onResponseData
+// put.onResponseOk = defaults.onResponseOk
+// put.onResponseComplete = defaults.onResponseComplete
+// put.onBadRequest = defaults.onBadRequest
+// put.onUnauthorized = defaults.onUnauthorized
+// put.onForbidden = defaults.onForbidden
+// put.onServerError = defaults.onServerError
+// put.onError = defaults.onError
 
 /**
  * DELETE Item
@@ -220,90 +214,14 @@ export const del = function(name, options={}) {
   }
 }
 del.method = defaults.methods.DEL
-del.onResponseData = defaults.onResponseData
-del.onResponseOk = defaults.onResponseOk
-del.onResponseComplete = defaults.onResponseComplete
-del.onBadRequest = defaults.onBadRequest
-del.onUnauthorized = defaults.onUnauthorized
-del.onForbidden = defaults.onForbidden
-del.onServerError = defaults.onServerError
-del.onError = defaults.onError
-
-export const getReducers = () => {
-  let reducers = {}
-  for (let [name, resource] of resources) {
-    if(resource.reducer && resource.reducer === false) continue
-
-    const { GET, PUT, POST, DEL } = defaults.methods
-
-    // Generate LIST reducer
-    const LIST = generateActions(name, { resourceType: defaults.list.name })
-    reducers[resource.reducerName + defaults.list.name] = (state = defaults.item.reducer, action) => {
-      const { status } = action
-      switch (action.type) {
-        case LIST(GET.INIT).type:
-          return R.merge( state, { fetching: true, status: null } )
-
-        case LIST(GET.OK).type:
-          return R.merge( state, { fetching: false, resp: action.resp.body, status } )
-
-        case LIST(GET.ERR).type:
-          return R.merge(state, { fetching: false, err: action.err, status})
-
-        default:
-          return state
-      }
-    }
-
-    // Generate ITEM reducer
-    const ITEM = generateActions(name, { resourceType: defaults.item.name })
-    reducers[resource.reducerName + defaults.item.name] = (state = defaults.list.reducer, action) => {
-      const { status } = action
-
-      switch (action.type) {
-        case ITEM(GET.INIT).type:
-          return R.merge( state, { fetching: true, status:  null } )
-
-        case ITEM(GET.OK).type:
-          return R.merge( state, { fetching: false, resp: action.resp.body, status } )
-
-        case ITEM(GET.ERR).type:
-          return R.merge(state, { fetching: false, err: action.err, status} )
-
-        case ITEM(POST.INIT).type:
-          return R.merge( state, { posting: true, status: null } )
-
-        case ITEM(POST.OK).type:
-          return R.merge( state, { posting: false, resp: action.resp.body, status } )
-
-        case ITEM(POST.ERR).type:
-          return R.merge(state, { posting: false, err: action.err, status} )
-
-        case ITEM(PUT.INIT).type:
-          return R.merge( state, { updating: true, status: null } )
-
-        case ITEM(PUT.OK).type:
-          return R.merge( state, { updating: false, resp: action.resp.body, status } )
-
-        case ITEM(PUT.ERR).type:
-          return R.merge(state, { updating: false, err: action.err, status} )
-
-        case ITEM(DEL.INIT).type:
-          return R.merge( state, { deleting: true, status: null } )
-
-        case ITEM(DEL.OK).type:
-          return R.merge( state, { deleting: false, resp: action.resp.body, status } )
-
-        case ITEM(DEL.ERR).type:
-          return R.merge(state, { deleting: false, err: action.err, status} )
-
-        default:
-          return state
-      }
-    }
-  }
-  return reducers
-}
+// del.onResponseData = defaults.onResponseData
+// del.onResponseOk = defaults.onResponseOk
+// del.onResponseComplete = defaults.onResponseComplete
+// del.onBadRequest = defaults.onBadRequest
+// del.onUnauthorized = defaults.onUnauthorized
+// del.onForbidden = defaults.onForbidden
+// del.onServerError = defaults.onServerError
+// del.onError = defaults.onError
 
 // Convert to Rambda
 const generateActions = (name, options={}) => {
@@ -315,9 +233,12 @@ const generateActions = (name, options={}) => {
     R.map(e => e.toUpperCase()),
     R.concat([name, resourceType])
   )
-  // let action = [name.toUpperCase(), resourceType.toUpperCase()]
-  // return (stage, updates={}) => R.merge({ type: R.join("_", [...action, stage]) }, updates)
   return (stage, updates={}) => R.merge(buildAction([stage]), updates)
+}
+
+const generateEvents = (options, resource, request) => event => {
+  const onEvent = `on${event}`
+  return options[onEvent] || (resource[request.name] && resource[request.name][onEvent]) || resource[onEvent] || request[onEvent] || events[onEvent]
 }
 
 const dispatchRequest = (request, name, options, dispatch, actions) => {
@@ -326,7 +247,7 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
     headers=defaults.headers,
     query={},
     payload={},
-    contentType=options.contentType,
+    contentType=defaults.contentType,
   }=options
 
   dispatch(actions(method.INIT))
@@ -337,32 +258,103 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
     .send(payload)
     .type(contentType)
     .end((err, resp) => {
-      const {
-        onResponseData=request.onResponseData
-        ,onResponseOk=request.onResponseOk
-        ,onResponseComplete=request.onResponseComplete
-        ,onServerError=request.onServerError
-        ,onBadRequest=request.onBadRequest
-        ,onUnauthorized=request.onUnauthorized
-        ,onForbidden=request.onUnauthorized
-      }=options
+      const on = generateEvents(options, resource, request)
+
       if (err === null) {
-        resp = onResponseData(resp)
-        onResponseOk(resp, dispatch, actions(method.OK))
-        return onResponseComplete(resp, dispatch)
+        resp = on("Data")(resp)
+        on("Response")(resp, dispatch, actions(method.OK))
+        return on("Complete")(resp, dispatch)
       }
 
-      if (err.status >= 500) return onServerError(err, dispatch, actions(method.ERR))
-      if (err.status === 400) return onBadRequest(err, dispatch, actions(method.ERR))
-      if (err.status === 401) return onUnauthorized(err, dispatch, actions(method.ERR))
-      if (err.status === 403) return onForbidden(err, dispatch, actions(method.ERR))
-      return onError(err)
+      if (err.status >= 500) return on("ServerError")(err, dispatch, actions(method.ERR))
+      if (err.status === 400) return on("BadRequest")(err, dispatch, actions(method.ERR))
+      if (err.status === 401) return on("Unauthorized")(err, dispatch, actions(method.ERR))
+      if (err.status === 403) return on("Forbidden")(err, dispatch, actions(method.ERR))
+      return on("Error")(err)
     })
 }
 
-const onEvent = (event, options, resource, request) => {
-  return options[event] || resource.events[event] || request[event] || events[event]
+export const getReducers = () => {
+  let reducers = {}
+  for (let [name, resource] of resources) {
+    if(resource.reducer && resource.reducer === false) continue
+    reducers[resource.reducerName + defaults.list.name] = defaults.list.reducer(name, defaults.list.initState)
+    reducers[resource.reducerName + defaults.item.name] = defaults.item.reducer(name, defaults.item.initState)
+  }
+  return reducers
 }
+
+const defaultListReducer = (name, initState) => {
+  const LIST = generateActions(name, { resourceType: defaults.list.name })
+  const { GET } = defaults.methods
+
+  return (state=initState, action) => {
+    const { status } = action
+    switch (action.type) {
+      case LIST(GET.INIT).type:
+        return R.merge( state, { fetching: true, status: null } )
+
+      case LIST(GET.OK).type:
+        return R.merge( state, { fetching: false, resp: action.resp.body, status } )
+
+      case LIST(GET.ERR).type:
+        return R.merge(state, { fetching: false, err: action.err, status})
+
+      default:
+        return state
+    }
+  }
+}
+
+const defaultItemReducer = (name, initState) => {
+  const ITEM = generateActions(name, { resourceType: defaults.item.name })
+  const { GET, PUT, POST, DEL } = defaults.methods
+
+  return (state=initState, action) => {
+    const { status } = action
+    switch (action.type) {
+      case ITEM(GET.INIT).type:
+        return R.merge( state, { fetching: true, status:  null } )
+
+      case ITEM(GET.OK).type:
+        return R.merge( state, { fetching: false, resp: action.resp.body, status } )
+
+      case ITEM(GET.ERR).type:
+        return R.merge(state, { fetching: false, err: action.err, status} )
+
+      case ITEM(POST.INIT).type:
+        return R.merge( state, { posting: true, status: null } )
+
+      case ITEM(POST.OK).type:
+        return R.merge( state, { posting: false, resp: action.resp.body, status } )
+
+      case ITEM(POST.ERR).type:
+        return R.merge(state, { posting: false, err: action.err, status} )
+
+      case ITEM(PUT.INIT).type:
+        return R.merge( state, { updating: true, status: null } )
+
+      case ITEM(PUT.OK).type:
+        return R.merge( state, { updating: false, resp: action.resp.body, status } )
+
+      case ITEM(PUT.ERR).type:
+        return R.merge(state, { updating: false, err: action.err, status} )
+
+      case ITEM(DEL.INIT).type:
+        return R.merge( state, { deleting: true, status: null } )
+
+      case ITEM(DEL.OK).type:
+        return R.merge( state, { deleting: false, resp: action.resp.body, status } )
+
+      case ITEM(DEL.ERR).type:
+        return R.merge(state, { deleting: false, err: action.err, status} )
+
+      default:
+        return state
+    }
+  }
+}
+
 
 export default {
   resources
