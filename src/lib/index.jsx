@@ -5,76 +5,77 @@ import R from "ramda"
 
 let defaults = {
   baseUrl: ""
-  ,contentType: "application/json"
-  ,query: {}
-  ,headers: {}
-  ,payload: {}
+  , contentType: "application/json"
+  , query: {}
+  , headers: {}
+  , payload: {}
 
-  ,list: {
+  , list: {
     name: "List"
-    ,reducer: {
+    , reducer: {
       fetching: false
-      ,updating: false
-      ,deleting: false
-      ,posting: false
-      ,status: null
-      ,pageNumber: 0
-      ,perPage: 100
-      ,resp: null
-      ,err: null
+      , updating: false
+      , deleting: false
+      , posting: false
+      , status: null
+      , pageNumber: 0
+      , perPage: 100
+      , resp: null
+      , err: null
     }
   }
 
-  ,item: {
+  , item: {
     name: "Item"
-    ,reducer: {
+    , reducer: {
       fetching: false
-      ,updating: false
-      ,deleting: false
-      ,posting: false
-      ,status: null
-      ,resp: null
-      ,err: null
+      , updating: false
+      , deleting: false
+      , posting: false
+      , status: null
+      , resp: null
+      , err: null
     }
   }
 
-  ,methods: {
+  , methods: {
     prefix: ""
-    ,GET: {
+    , GET: {
       name: "GET"
-      ,INIT: "FETCHING"
-      ,OK: "FETCH_OK"
-      ,ERR: "FETCH_ERR"
+      , INIT: "FETCHING"
+      , OK: "FETCH_OK"
+      , ERR: "FETCH_ERR"
     }
-    ,POST: {
+    , POST: {
       name: "POST"
-      ,INIT: "POSTING"
-      ,OK: "POST_OK"
-      ,ERR: "POST_ERR"
+      , INIT: "POSTING"
+      , OK: "POST_OK"
+      , ERR: "POST_ERR"
     }
-    ,PUT: {
+    , PUT: {
       name: "PUT"
-      ,INIT: "UPDATING"
-      ,OK: "UPDATE_OK"
-      ,ERR: "UPDATE_ERR"
+      , INIT: "UPDATING"
+      , OK: "UPDATE_OK"
+      , ERR: "UPDATE_ERR"
     }
-    ,DEL: {
+    , DEL: {
       name: "DELETE"
-      ,INIT: "DELETING"
-      ,OK: "DELETE_OK"
-      ,ERR: "DELETE_ERR"
+      , INIT: "DELETING"
+      , OK: "DELETE_OK"
+      , ERR: "DELETE_ERR"
     }
   }
-
-  ,onResponseData(resp, dispatch) {
+}
+const events = {
+  onData(resp, dispatch) {
     console.warn("SUCCESS DATA")
     return resp
   }
-  ,onResponseOk(resp, dispatch, action) {
+  ,onResponse(resp, dispatch, action) {
     console.warn("SUCCESS Ok")
     dispatch(R.merge(action, { resp }))
   }
-  ,onResponseComplete(resp, dispatch) {
+  ,onComplete(resp, dispatch) {
     console.warn("COMPLETE")
   }
   ,onBadRequest: requestError
@@ -91,11 +92,19 @@ const requestError = (err, dispatch, action) => {
 
 export const resources = new Map()
 export const addResource = (name, url, options) => {
+  // If no url is supplied assume url is /name
   url = url || (/^\//.test(name) ? name : "/" + name)
-  resources.set(name, R.merge({
-    url: R.compose(R.concat(defaults.baseUrl), R.join("/"), R.prepend(url))
+
+  let resource = R.merge({
+    buildUrl: R.compose(R.concat(defaults.baseUrl), R.join("/"), R.prepend(url))
     ,reducerName: name
-  }, options))
+    ,url
+  }, options)
+  resource.events = R.merge({
+
+  }. options.events || {})
+
+  resources.set(name, resource)
 }
 
 export const removeResource = name => resources.delete(name)
@@ -106,7 +115,7 @@ export const removeResource = name => resources.delete(name)
  * @param options
  * @returns {Function}
  */
-export const getList = function(name, options={}) {
+export const getList = function(name, options={}) {``
   const request = getList
   if (typeof(name)==="string") name = [name]
 
@@ -115,6 +124,7 @@ export const getList = function(name, options={}) {
     dispatchRequest(request, name, options, dispatch, generateActions(name[0], options))
   }
 }
+
 getList.method = defaults.methods.GET
 getList.onResponseData = defaults.onResponseData
 getList.onResponseOk = defaults.onResponseOk
@@ -350,6 +360,9 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
     })
 }
 
+const onEvent = (event, options, resource, request) => {
+  return options[event] || resource.events[event] || request[event] || events[event]
+}
 
 export default {
   resources
