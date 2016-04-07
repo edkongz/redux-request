@@ -36,7 +36,7 @@ api.defaults.onResponse = (resp, action) => {
 To run something after the response is complete
 
 ```javascript
-api.defaults.onCompolete = (resp) => {
+api.defaults.onComplete = (resp) => {
   // do stuff	
 }
 ```
