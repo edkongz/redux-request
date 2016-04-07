@@ -114,15 +114,16 @@ const removeResource = name => resources.delete(name)
 /**
  * GET List
  * @param name
+ * @param params
  * @param options
  * @returns {Function}
  */
-function getList(name, options={}) {
-  name = checkResourceName(name)
+function getList(name, params, options) {
+  let { _params, _options } = checkResourceName(name, params, options)
 
   return function(dispatch) {
-    options = R.merge({ resourceType: defaults.list.name }, options)
-    dispatchRequest(getList, name, options, dispatch, generateActions(name[0], options))
+    _options = R.merge({ resourceType: defaults.list.name }, _options)
+    dispatchRequest(getList, name, _params, _options, dispatch)
   }
 }
 
@@ -134,12 +135,12 @@ getList.method = defaults.methods.GET
  * @param options
  * @returns {Function}
  */
-function get(name, options={}) {
-  name = checkResourceName(name)
+function get(name, params=[], options={}) {
+  let { _params, _options } = checkResourceName(name, params, options)
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    return dispatchRequest(get, name, options, dispatch, generateActions(name, options))
+    return dispatchRequest(get, name, _options, _params, dispatch)
   }
 }
 get.method = defaults.methods.GET
@@ -150,12 +151,12 @@ get.method = defaults.methods.GET
  * @param options
  * @returns {Function}
  */
-function post(name, options={}) {
-  name = checkResourceName(name)
+function post(name, params=[], options={}) {
+  let { _params, _options } = checkResourceName(name, params, options)
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(post, name, options, dispatch, generateActions(name, options))
+    dispatchRequest(post, name, _options, _params, dispatch)
   }
 }
 post.method = defaults.methods.POST
@@ -166,12 +167,12 @@ post.method = defaults.methods.POST
  * @param options
  * @returns {Function}
  */
-function put(name, options={}) {
-  name = checkResourceName(name)
+function put(name, params=[], options={}) {
+  let { _params, _options } = checkResourceName(name, params, options)
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(put, name, options, dispatch, generateActions(name, options))
+    dispatchRequest(put, name, _options, _params, dispatch)
   }
 }
 put.method = defaults.methods.PUT
@@ -182,23 +183,39 @@ put.method = defaults.methods.PUT
  * @param options
  * @returns {Function}
  */
-function del(name, options={}) {
-  name = checkResourceName(name)
+function del(name, params=[] options={}) {
+  let { _params, _options } = checkResourceName(name, params, options)
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(request, name, options, dispatch, generateActions(name, options))
+    dispatchRequest(del, name, _options, _params, dispatch)
   }
 }
 del.method = defaults.methods.DEL
 
-function checkResourceName(name){
-  if (R.type(name) === "String") name = [name]
-  if (R.type(name) !== "Array") throw new TypeError("Resource name must be either a either string or an array of strings")
-  if (!resources.has(name[0])) throw new ReferenceError(`No resource found named: ${name[0]}`)
-  return R.map(e => e.toString(), name)
+/**
+ * Check if the resource is valid
+ * @param name
+ * @param params
+ * @param options
+ */
+function checkResourceName(name, params=[], options={}){
+  if (!resources.has(name)) throw new ReferenceError(`No resource found named: ${name}`)
+
+  if("number" === typeof params) params = [params.toString()]
+  if("string" === typeof params) params = [params]
+  if(!Array.isArray(params)) {
+    options = params; params =[];
+  }
+  return { _params: params, _options: options }
 }
 
+/**
+ *
+ * @param name
+ * @param options
+ * @returns {function()}
+ */
 export function generateActions(name, options={}){
   let { resourceType=defaults.item.name } = options
 
@@ -210,7 +227,13 @@ export function generateActions(name, options={}){
   )
   return (stage, updates={}) => R.merge(buildAction([stage]), updates)
 }
-
+/**
+ *
+ * @param options
+ * @param resource
+ * @param request
+ * @returns {function()}
+ */
 function generateEvents(options, resource, request){
   return event => {
     const onEvent = `on${event}`
@@ -219,13 +242,11 @@ function generateEvents(options, resource, request){
   }
 }
 
-function generateQuery(query, encode=true){
-  return R.compose(R.join("&"), R.map(R.join("=")), R.toPairs)(query)
-}
-
-function dispatchRequest(request, name, options, dispatch, actions){
+function dispatchRequest(request, name, params, options, dispatch){
   const { method } = request
-  const resource = resources.get(name.shift())
+  const resource = resources.get(name)
+  const actions = generateActions(name, options)
+
   const {
     headers=defaults.headers,
     query={},
@@ -234,7 +255,7 @@ function dispatchRequest(request, name, options, dispatch, actions){
   }=options
 
   dispatch(actions(method.INIT))
-  requests(method.name, resource.buildUrl([name]))
+  requests(method.name, resource.buildUrl([params]))
     .set(headers)
     .query(query)
     .send(payload)
@@ -251,7 +272,7 @@ function dispatchRequest(request, name, options, dispatch, actions){
       if (err.status === 400) return on("BadRequest")(err, dispatch, actions(method.ERR))
       if (err.status === 401) return on("Unauthorized")(err, dispatch, actions(method.ERR))
       if (err.status === 403) return on("Forbidden")(err, dispatch, actions(method.ERR))
-      return on("Error")(err)
+      return on("Error")(err, dispatch, actions(method.ERR))
     })
 }
 
