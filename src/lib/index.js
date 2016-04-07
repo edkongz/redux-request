@@ -2,8 +2,9 @@
 
 import requests from "superagent"
 import R from "ramda"
+import { defaultListReducer, defaultItemReducer } from "./reducers.js"
 
-let defaults = {
+export let defaults = {
   baseUrl: ""
   ,contentType: "application/json"
   ,query: {}
@@ -22,10 +23,10 @@ let defaults = {
       ,pageNumber: 0
       ,perPage: 100
       ,resp: null
+      ,data: null
       ,err: null
     }
   }
-
   ,item: {
     name: "Item"
     ,reducer: defaultItemReducer
@@ -36,6 +37,7 @@ let defaults = {
       ,posting: false
       ,status: null
       ,resp: null
+      ,data: null
       ,err: null
     }
   }
@@ -71,7 +73,7 @@ let defaults = {
 
 const events = {
   onData(resp, dispatch) {
-    console.warn("SUCCESS DATA")
+    console.info("SUCCESS DATA")
     return resp
   }
   ,onResponse(resp, dispatch, action) {
@@ -88,12 +90,12 @@ const events = {
   ,onError: requestError
 }
 
-const requestError = (err, dispatch, action) => {
-  console.warn(`${err.status}: ${err.response}`)
+function requestError (err, dispatch, action) {
+  console.warn(`${err.status}: ${JSON.stringify(err.response.body, null, 2)}`)
   dispatch(R.merge(action, { status: err.status, err }))
 }
 
-export const resources = new Map()
+const resources = new Map()
 export const addResource = (name, url, options) => {
   // If no url is supplied assume url is /name
   url = url || (/^\//.test(name) ? name : "/" + name)
@@ -107,8 +109,7 @@ export const addResource = (name, url, options) => {
 
   resources.set(name, resource)
 }
-
-export const removeResource = name => resources.delete(name)
+const removeResource = name => resources.delete(name)
 
 /**
  * GET List
@@ -116,7 +117,7 @@ export const removeResource = name => resources.delete(name)
  * @param options
  * @returns {Function}
  */
-export const getList = function(name, options={}) {
+function getList(name, options={}) {
   name = checkResourceName(name)
 
   return function(dispatch) {
@@ -133,7 +134,7 @@ getList.method = defaults.methods.GET
  * @param options
  * @returns {Function}
  */
-export const get = function(name, options={}) {
+function get(name, options={}) {
   name = checkResourceName(name)
 
   return function(dispatch) {
@@ -149,7 +150,7 @@ get.method = defaults.methods.GET
  * @param options
  * @returns {Function}
  */
-export const post = function(name, options={}) {
+function post(name, options={}) {
   name = checkResourceName(name)
 
   return function(dispatch) {
@@ -165,7 +166,7 @@ post.method = defaults.methods.POST
  * @param options
  * @returns {Function}
  */
-export const put = function(name, options={}) {
+function put(name, options={}) {
   name = checkResourceName(name)
 
   return function(dispatch) {
@@ -181,7 +182,7 @@ put.method = defaults.methods.PUT
  * @param options
  * @returns {Function}
  */
-export const del = function(name, options={}) {
+function del(name, options={}) {
   name = checkResourceName(name)
 
   return function(dispatch) {
@@ -191,7 +192,14 @@ export const del = function(name, options={}) {
 }
 del.method = defaults.methods.DEL
 
-const generateActions = (name, options={}) => {
+function checkResourceName(name){
+  if (R.type(name) === "String") name = [name]
+  if (R.type(name) !== "Array") throw new TypeError("Resource name must be either a either string or an array of strings")
+  if (!resources.has(name[0])) throw new ReferenceError(`No resource found named: ${name[0]}`)
+  return R.map(e => e.toString(), name)
+}
+
+export function generateActions(name, options={}){
   let { resourceType=defaults.item.name } = options
 
   const buildAction = R.compose(
@@ -203,20 +211,21 @@ const generateActions = (name, options={}) => {
   return (stage, updates={}) => R.merge(buildAction([stage]), updates)
 }
 
-const checkResourceName = name => {
-  if (R.type(name) === "String") name = [name]
-  if (R.type(name) !== "Array") throw new TypeError("Resource name must be either a either string or an array of strings")
-  if (!resources.has(name[0])) throw new ReferenceError(`No resource found named: ${name[0]}`)
-  return R.map(e => e.toString(), name)
+function generateEvents(options, resource, request){
+  return event => {
+    const onEvent = `on${event}`
+    const name = request.name.substr(1)
+    return options[onEvent] || (resource[name] && resource[name][onEvent]) || resource[onEvent] || request[onEvent] || events[onEvent]
+  }
 }
 
-const generateEvents = (options, resource, request) => event => {
-  const onEvent = `on${event}`
-  return options[onEvent] || (resource[request.name] && resource[request.name][onEvent]) || resource[onEvent] || request[onEvent] || events[onEvent]
+function generateQuery(query, encode=true){
+  return R.compose(R.join("&"), R.map(R.join("=")), R.toPairs)(query)
 }
 
-const dispatchRequest = (request, name, options, dispatch, actions) => {
+function dispatchRequest(request, name, options, dispatch, actions){
   const { method } = request
+  const resource = resources.get(name.shift())
   const {
     headers=defaults.headers,
     query={},
@@ -225,14 +234,13 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
   }=options
 
   dispatch(actions(method.INIT))
-  requests(method.name, resources.get(name.shift()).buildUrl([name]))
+  requests(method.name, resource.buildUrl([name]))
     .set(headers)
     .query(query)
     .send(payload)
     .type(contentType)
     .end((err, resp) => {
       const on = generateEvents(options, resource, request)
-
       if (err === null) {
         resp = on("Data")(resp)
         on("Response")(resp, dispatch, actions(method.OK))
@@ -251,7 +259,7 @@ const dispatchRequest = (request, name, options, dispatch, actions) => {
  * Generates reducers to add to store
  * @returns {{}}
  */
-export const getReducers = () => {
+export function getReducers() {
   let reducers = {}
   for (let [name, resource] of resources) {
     if(resource.reducer && resource.reducer === false) continue
@@ -259,89 +267,6 @@ export const getReducers = () => {
     reducers[resource.reducerName + defaults.item.name] = defaults.item.reducer(name, defaults.item.initState)
   }
   return reducers
-}
-
-/**
- * Default list reducer
- * @param name
- * @param initState
- * @returns {function()}
- */
-const defaultListReducer = (name, initState) => {
-  const LIST = generateActions(name, { resourceType: defaults.list.name })
-  const { GET } = defaults.methods
-
-  return (state=initState, action) => {
-    const { status } = action
-    switch (action.type) {
-      case LIST(GET.INIT).type:
-        return R.merge( state, { fetching: true, status: null } )
-
-      case LIST(GET.OK).type:
-        return R.merge( state, { fetching: false, resp: action.resp.body, status } )
-
-      case LIST(GET.ERR).type:
-        return R.merge(state, { fetching: false, err: action.err, status})
-
-      default:
-        return state
-    }
-  }
-}
-
-/**
- * Default item reducer
- * @param name
- * @param initState
- * @returns {function()}
- */
-const defaultItemReducer = (name, initState) => {
-  const ITEM = generateActions(name, { resourceType: defaults.item.name })
-  const { GET, PUT, POST, DEL } = defaults.methods
-
-  return (state=initState, action) => {
-    const { status } = action
-    switch (action.type) {
-      case ITEM(GET.INIT).type:
-        return R.merge( state, { fetching: true, status:  null } )
-
-      case ITEM(GET.OK).type:
-        return R.merge( state, { fetching: false, resp: action.resp.body, status } )
-
-      case ITEM(GET.ERR).type:
-        return R.merge(state, { fetching: false, err: action.err, status} )
-
-      case ITEM(POST.INIT).type:
-        return R.merge( state, { posting: true, status: null } )
-
-      case ITEM(POST.OK).type:
-        return R.merge( state, { posting: false, resp: action.resp.body, status } )
-
-      case ITEM(POST.ERR).type:
-        return R.merge(state, { posting: false, err: action.err, status} )
-
-      case ITEM(PUT.INIT).type:
-        return R.merge( state, { updating: true, status: null } )
-
-      case ITEM(PUT.OK).type:
-        return R.merge( state, { updating: false, resp: action.resp.body, status } )
-
-      case ITEM(PUT.ERR).type:
-        return R.merge(state, { updating: false, err: action.err, status} )
-
-      case ITEM(DEL.INIT).type:
-        return R.merge( state, { deleting: true, status: null } )
-
-      case ITEM(DEL.OK).type:
-        return R.merge( state, { deleting: false, resp: action.resp.body, status } )
-
-      case ITEM(DEL.ERR).type:
-        return R.merge(state, { deleting: false, err: action.err, status} )
-
-      default:
-        return state
-    }
-  }
 }
 
 function API(resource) {
@@ -358,6 +283,7 @@ function API(resource) {
 export default Object.assign(API, {
   addResource
   ,removeResource
+  ,getReducers
   ,getList
   ,get
   ,post
