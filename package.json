@@ -12,7 +12,7 @@
     "url": "git+https://kongdigital@github.com/kongdigital/redux-request.git"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/kongdigital/redux-request/issues"
   },
