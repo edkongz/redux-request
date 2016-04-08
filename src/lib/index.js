@@ -86,6 +86,7 @@ const events = {
   ,onBadRequest: requestError
   ,onUnauthorized: requestError
   ,onForbidden: requestError
+  ,onNotFound: requestError
   ,onServerError: requestError
   ,onError: requestError
 }
@@ -137,10 +138,9 @@ getList.method = defaults.methods.GET
  */
 function get(name, params=[], options={}) {
   let { _params, _options } = checkResourceName(name, params, options)
-
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    return dispatchRequest(get, name, _options, _params, dispatch)
+    return dispatchRequest(get, name, _params, _options, dispatch)
   }
 }
 get.method = defaults.methods.GET
@@ -156,7 +156,7 @@ function post(name, params=[], options={}) {
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(post, name, _options, _params, dispatch)
+    dispatchRequest(post, name, _params, _options, dispatch)
   }
 }
 post.method = defaults.methods.POST
@@ -172,7 +172,7 @@ function put(name, params=[], options={}) {
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(put, name, _options, _params, dispatch)
+    dispatchRequest(put, name, _params, _options, dispatch)
   }
 }
 put.method = defaults.methods.PUT
@@ -183,12 +183,12 @@ put.method = defaults.methods.PUT
  * @param options
  * @returns {Function}
  */
-function del(name, params=[] options={}) {
+function del(name, params=[], options={}) {
   let { _params, _options } = checkResourceName(name, params, options)
 
   return function(dispatch) {
     options = R.merge( { resourceType: defaults.item.name }, options)
-    dispatchRequest(del, name, _options, _params, dispatch)
+    dispatchRequest(del, name, _params, _options, dispatch)
   }
 }
 del.method = defaults.methods.DEL
@@ -201,7 +201,6 @@ del.method = defaults.methods.DEL
  */
 function checkResourceName(name, params=[], options={}){
   if (!resources.has(name)) throw new ReferenceError(`No resource found named: ${name}`)
-
   if("number" === typeof params) params = [params.toString()]
   if("string" === typeof params) params = [params]
   if(!Array.isArray(params)) {
@@ -255,7 +254,7 @@ function dispatchRequest(request, name, params, options, dispatch){
   }=options
 
   dispatch(actions(method.INIT))
-  requests(method.name, resource.buildUrl([params]))
+  requests(method.name, resource.buildUrl(params))
     .set(headers)
     .query(query)
     .send(payload)
@@ -272,6 +271,7 @@ function dispatchRequest(request, name, params, options, dispatch){
       if (err.status === 400) return on("BadRequest")(err, dispatch, actions(method.ERR))
       if (err.status === 401) return on("Unauthorized")(err, dispatch, actions(method.ERR))
       if (err.status === 403) return on("Forbidden")(err, dispatch, actions(method.ERR))
+      if (err.status === 404) return on("NotFound")(err, dispatch, actions(method.ERR))
       return on("Error")(err, dispatch, actions(method.ERR))
     })
 }
@@ -304,6 +304,7 @@ function API(resource) {
 export default Object.assign(API, {
   addResource
   ,removeResource
+  ,events
   ,getReducers
   ,getList
   ,get
