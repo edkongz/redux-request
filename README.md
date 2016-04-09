@@ -37,6 +37,12 @@ api.addResource("users", "http://github.com/api")
 // Generate reducers and add them to your store (optional)
 const apiReducers = api.getReducers()
 
+// Create the store with thunk middleware
+const createStoreWithMiddleware = compose(
+   applyMiddleware(thunkMiddleware),
+)(createStore)
+const store = createStoreWithMiddleware(apiReducers)
+
 // Start dispatching requests
 // GET http://localhost:3000/users
 store.dispatch(api.getList("users"))
