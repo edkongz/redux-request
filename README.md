@@ -84,3 +84,4 @@ api.addResource("myResource", { get: { onData: resp => resp }})
 // For just this request set the onData callback
 api.get("myResource", { onData: resp => resp })
 ```
+Redux Roar

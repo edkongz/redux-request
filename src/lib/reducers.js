@@ -45,7 +45,7 @@ export const defaultItemReducer = (name, initState) => {
     const { status } = action
     switch (action.type) {
       case ITEM(GET.INIT).type:
-        return R.merge( state, { fetching: true, status:  null } )
+        return R.merge( state, { fetching: true, status:  null, data: null  } )
 
       case ITEM(GET.OK).type:
         return R.merge( state, { fetching: false, resp: action.resp, data: action.resp.body,  status } )
@@ -85,3 +85,5 @@ export const defaultItemReducer = (name, initState) => {
     }
   }
 }
+
+

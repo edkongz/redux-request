@@ -21,7 +21,7 @@ export let defaults = {
       ,posting: false
       ,status: null
       ,pageNumber: 0
-      ,perPage: 100
+      ,perPage: 20
       ,resp: null
       ,data: null
       ,err: null
@@ -73,15 +73,15 @@ export let defaults = {
 
 const events = {
   onData(resp, dispatch) {
-    console.info("SUCCESS DATA")
+    // console.info("SUCCESS DATA")
     return resp
   }
   ,onResponse(resp, dispatch, action) {
-    console.warn("SUCCESS Ok")
+    // console.warn("SUCCESS Ok")
     dispatch(R.merge(action, { resp }))
   }
   ,onComplete(resp, dispatch) {
-    console.warn("COMPLETE")
+    // console.warn("COMPLETE")
   }
   ,onBadRequest: requestError
   ,onUnauthorized: requestError
@@ -92,7 +92,7 @@ const events = {
 }
 
 function requestError (err, dispatch, action) {
-  console.warn(`${err.status}: ${JSON.stringify(err.response.body, null, 2)}`)
+  // console.warn(`${err.status}: ${JSON.stringify(err.response.body, null, 2)}`)
   dispatch(R.merge(action, { status: err.status, err }))
 }
 
