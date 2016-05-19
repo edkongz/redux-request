@@ -20,7 +20,13 @@ export const defaultListReducer = (name, initState) => {
         return R.merge( state, { fetching: true, status: null } )
 
       case LIST(GET.OK).type:
-        return R.merge( state, { fetching: false, data: action.resp.body, resp: action.resp, status } )
+        return R.merge( state, {
+          fetching: false,
+          data: action.resp.body,
+          resp: action.resp, status,
+          pageNumber: R.propOr(null, "pageNumber", action),
+          perPage: R.propOr(null, "perPage", action)
+        })
 
       case LIST(GET.ERR).type:
         return R.merge(state, { fetching: false, err: action.err, status})

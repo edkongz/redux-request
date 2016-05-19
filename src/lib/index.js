@@ -263,7 +263,7 @@ function dispatchRequest(request, name, params, options, dispatch){
       const on = generateEvents(options, resource, request)
       if (err === null) {
         resp = on("Data")(resp)
-        on("Response")(resp, dispatch, actions(method.OK))
+        on("Response")(resp, dispatch, R.merge(options, actions(method.OK)))
         return on("Complete")(resp, dispatch)
       }
 
