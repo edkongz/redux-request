@@ -97,6 +97,7 @@ function requestError (err, dispatch, action) {
 }
 
 const resources = new Map()
+
 export const addResource = (name, url, options) => {
   // If no url is supplied assume url is /name
   url = url || (/^\//.test(name) ? name : "/" + name)
@@ -176,7 +177,7 @@ function put(name, params=[], options={}) {
   }
 }
 put.method = defaults.methods.PUT
-
+  
 /**
  * DELETE Item
  * @param name
